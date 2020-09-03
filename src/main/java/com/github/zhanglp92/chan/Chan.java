@@ -1,29 +1,28 @@
 package com.github.zhanglp92.chan;
 
+import lombok.SneakyThrows;
 import lombok.extern.log4j.Log4j2;
 
 import java.util.Objects;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 
 /**
- * 实现简易的Go channel
+ * 实现简易的Go channel, 不保存null数据
  */
 @Log4j2
 public class Chan<V> {
 
     /**
-     * 发送结束
-     */
-    private boolean isClose;
-
-    /**
      * 数据缓冲区
      */
-    private ArrayBlockingQueue<V> buf;
+    private BlockingQueue<V> buf;
 
-    final ReentrantLock lock;
+    /**
+     * 无缓冲
+     */
+    public Chan() {
+        this(0);
+    }
 
     /**
      * 有缓冲chan
@@ -31,43 +30,50 @@ public class Chan<V> {
      * @param cap 缓冲区长度, 0为无缓冲chan
      */
     public Chan(int cap) {
-        this.buf = new ArrayBlockingQueue<>(cap);
-        this.lock = new ReentrantLock();
+        this.buf = new ChanBlockingQueue<>(cap);
+
+//        if (cap <= 0) {
+//            this.buf = new EmptyArrayBlockingQueue<>();
+//        } else {
+//            this.buf = new ArrayBlockingQueue<>(cap);
+//        }
     }
 
     /**
      * 关闭chan
      */
+    @SneakyThrows
     public void close() {
-        this.isClose = true;
-        log.info("send finish");
+        this.buf.close();
     }
 
     /**
      * 发送数据
      */
-    public void send(V v) throws Exception {
-        if (this.isClose) {
-            throw new Exception("mustn't send close chan");
-        }
-        this.buf.put(v);
+    @SneakyThrows
+    public void send(V v) {
+        this.buf.offer(v);
     }
 
     /**
-     * 接受数据
+     * 接受数据(需要保证有数据, 不然会阻塞出不来)
      */
-    private V recv() throws InterruptedException {
+    @SneakyThrows
+    private V recv() {
         return this.buf.take();
     }
 
     /**
      * 迭代接受数据
      */
-    public void forEach(Consumer<? super V> action) throws InterruptedException {
+    @SneakyThrows
+    public void forEach(Consumer<? super V> action) {
         Objects.requireNonNull(action);
-        while (!this.buf.isEmpty() || !this.isClose) {
-            action.accept(this.recv());
+        while (!this.buf.isDone()) {
+            V v = this.recv();
+            if (v != null) {
+                action.accept(v);
+            }
         }
-        log.info("for finish");
     }
 }
