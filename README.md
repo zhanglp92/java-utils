@@ -2,7 +2,7 @@
 
 ## chan 
 
-java实现go channel功能, eg: [样例](src/main/java/com/github/zhanglp92/example/ChanExample.java)
+模仿golang实现java chan, eg: [样例](src/main/java/com/github/zhanglp92/example/ChanExample.java)
 
 ```java
 public class Sample {
