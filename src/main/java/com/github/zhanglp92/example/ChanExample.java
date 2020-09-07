@@ -7,8 +7,6 @@ import lombok.extern.log4j.Log4j2;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.*;
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.ReentrantLock;
 
 @Log4j2
 public class ChanExample {
@@ -16,10 +14,15 @@ public class ChanExample {
     public static void f1() throws InterruptedException, ExecutionException {
         ThreadPoolExecutor pool = new ThreadPoolExecutor(5, 5, 1, TimeUnit.SECONDS, new LinkedBlockingDeque<>(), new ThreadPoolExecutor.AbortPolicy());
 
+        // Chan<Integer> ch = new Chan<>();
         Chan<Integer> ch = new Chan<>(40);
-//        Chan<Integer> ch = new Chan<>();
+
         List<Future<?>> futureList = Lists.newArrayListWithCapacity(4);
 
+        futureList.add(pool.submit(() -> {
+            log.info("读取chan阻塞测试...");
+            log.info("读取chan阻塞测试, data = {}", ch.recv());
+        }));
 
         futureList.add(pool.submit(() -> {
             Random random = new Random(System.currentTimeMillis());
@@ -31,7 +34,9 @@ public class ChanExample {
                     e.printStackTrace();
                 }
             }
+            log.info("正在关闭chan");
             ch.close();
+            log.info("chan已关闭");
         }));
 
         Thread.sleep(1000);
@@ -50,25 +55,9 @@ public class ChanExample {
 
         log.info("end");
         pool.shutdown();
-    }
 
-    public static void f2() throws InterruptedException {
-        ReentrantLock lock = new ReentrantLock(false);
-        Condition c = lock.newCondition();
-
-        lock.lockInterruptibly();
-        c.signal();
-        c.signal();
-        c.signal();
-        c.signal();
-        lock.unlock();
-
-        while (true) {
-            log.info("condition await");
-            lock.lockInterruptibly();
-            c.await();
-            lock.unlock();
-        }
+        log.info("读取close chan不阻塞测试, data = {}", ch.recv());
+        log.info("读取close chan不阻塞测试, data = {}", ch.recv());
     }
 
     public static void main(String[] args) throws InterruptedException, ExecutionException {

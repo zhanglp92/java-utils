@@ -31,12 +31,6 @@ public class Chan<V> {
      */
     public Chan(int cap) {
         this.buf = new ChanBlockingQueue<>(cap);
-
-//        if (cap <= 0) {
-//            this.buf = new EmptyArrayBlockingQueue<>();
-//        } else {
-//            this.buf = new ArrayBlockingQueue<>(cap);
-//        }
     }
 
     /**
@@ -59,7 +53,7 @@ public class Chan<V> {
      * 接受数据(需要保证有数据, 不然会阻塞出不来)
      */
     @SneakyThrows
-    private V recv() {
+    public V recv() {
         return this.buf.take();
     }
 

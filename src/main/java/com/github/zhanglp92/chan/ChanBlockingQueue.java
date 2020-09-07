@@ -51,19 +51,38 @@ public class ChanBlockingQueue<E> implements BlockingQueue<E> {
      */
     final private Object readWriteLock = new Object();
 
+    /**
+     * 初始化阻塞队列, 非公平锁且长度为0
+     */
     public ChanBlockingQueue() {
         this(0);
     }
 
+    /**
+     * 初始化阻塞队列(非公平锁)
+     *
+     * @param cap 初始化buf长度
+     */
     public ChanBlockingQueue(int cap) {
         this(cap, false);
     }
 
+    /**
+     * 初始化阻塞队列
+     *
+     * @param cap  初始buf长度
+     * @param fair 公平锁
+     */
     public ChanBlockingQueue(int cap, boolean fair) {
         lock = new ReentrantLock(fair);
         items = new Object[cap];
     }
 
+    /**
+     * 关闭阻塞队列. 关闭后不能写, 但可以读.
+     * <p>
+     * notion: 撷取空值, 目的为了释放阻塞的读线程
+     */
     public void close() throws InterruptedException {
         Lock lock = this.lock;
         lock.lockInterruptibly();
@@ -75,8 +94,6 @@ public class ChanBlockingQueue<E> implements BlockingQueue<E> {
                 if (h == null) {
                     continue;
                 }
-
-                log.info("close - recv , size = {}", recvQueen.size());
 
                 E v = dequeue();
                 if (v != null) {
@@ -98,10 +115,16 @@ public class ChanBlockingQueue<E> implements BlockingQueue<E> {
         }
     }
 
+    /**
+     * 判断是否已经关闭且读取结束
+     */
     public boolean isDone() {
         return count == 0 && sendQueen.size() == 0 && this.isClose;
     }
 
+    /**
+     * 读取数据
+     */
     public E take() throws InterruptedException {
         Lock lock = this.lock;
         lock.lockInterruptibly();
@@ -118,7 +141,12 @@ public class ChanBlockingQueue<E> implements BlockingQueue<E> {
                 return h.call();
             }
 
-            // 3. 否则保存到待接收队列, 进行阻塞
+            // 3. 如果无缓存数据, 且chan已关闭, 则直接返回空
+            if (isClose) {
+                return null;
+            }
+
+            // 4. 否则保存到待接收队列, 进行阻塞
             AtomicReference<E> av = new AtomicReference<>();
             Condition c = lock.newCondition();
             recvQueen.add((e) -> {
@@ -132,6 +160,9 @@ public class ChanBlockingQueue<E> implements BlockingQueue<E> {
         }
     }
 
+    /**
+     * 写缓存
+     */
     public void offer(E e) throws InterruptedException {
         checkClose();
 
