@@ -50,6 +50,24 @@ public class Chan<V> {
     }
 
     /**
+     * 批量发送数据. 数组
+     */
+    @SafeVarargs
+    @SneakyThrows
+    public final void send(V... elements) {
+        for (V v : elements) {
+            send(v);
+        }
+    }
+
+    /**
+     * 批量发送数据. 迭代
+     */
+    public final void send(Iterable<? extends V> elements) {
+        elements.forEach(this::send);
+    }
+
+    /**
      * 接受数据(需要保证有数据, 不然会阻塞出不来)
      */
     @SneakyThrows
